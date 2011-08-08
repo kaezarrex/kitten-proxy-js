@@ -1,3 +1,6 @@
+Dependencies:
+ imagemagick
+
 Usage:
  > mkdir tmp
  > node run.js
