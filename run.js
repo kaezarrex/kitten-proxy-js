@@ -4,6 +4,12 @@ var http = require('http'),
 
 var i = 0;
 
+function transformRequest(request) {
+    /* takes in a request, and determines if an image is being requested. If
+       this is the case, then a new request is generated. This request will
+       point to an image at placekitten.com */
+}
+
 http.createServer(function(request, response) {
 
     var proxy_request = createProxyRequest(request, response);
