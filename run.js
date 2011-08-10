@@ -1,11 +1,13 @@
 var http = require('http'),
     fs = require('fs'),
+    url = require('url'),
     exec = require('child_process').exec;
 
 var i = 0,
     MIME_TYPES = [
     'image/jpeg',
-    'image/png'
+    'image/png',
+    'image/gif'
 ];
 
 function kittenize(request, proxyRequest, proxyResponse, response) {
@@ -53,7 +55,7 @@ function setupProxy(request, proxyRequest, proxyResponse, response) {
        this is the case, then a new request is generated. This request will
        point to an image at placekitten.com. If the request for anything
        else, it is simply returned.*/
-    if (request.headers['host'] != 'placekitten.com' && MIME_TYPES.indexOf(proxyResponse.headers['content-type']) > -1) {
+    if (request.headers.host != 'placekitten.com' && MIME_TYPES.indexOf(proxyResponse.headers['content-type']) > -1) {
         // This response is an image, so replace it
         kittenize(request, proxyRequest, proxyResponse, response);
     } else {
@@ -62,8 +64,18 @@ function setupProxy(request, proxyRequest, proxyResponse, response) {
 }
 
 http.createServer(function(request, response) {
-    var proxy = http.createClient(80, request.headers['host']),
-        proxyRequest = proxy.request(request.method, request.url, request.headers);
+
+    var proxyRequest,
+        urlParts = url.parse(request.url),
+        options = {
+            host: urlParts.host,
+            port: 80,
+            method: request.method,
+            path: urlParts.pathname,
+            headers: request.headers
+        };
+
+    proxyRequest = http.request(options);
 
     proxyRequest.addListener('response', function(proxyResponse) {
         setupProxy(request, proxyRequest, proxyResponse, response);
