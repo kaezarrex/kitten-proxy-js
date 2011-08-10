@@ -58,7 +58,20 @@ function setupProxy(request, proxyRequest, proxyResponse, response) {
     if (request.headers.host != 'placekitten.com' && MIME_TYPES.indexOf(proxyResponse.headers['content-type']) > -1) {
         // This response is an image, so replace it
         kittenize(request, proxyRequest, proxyResponse, response);
-    } else {
+    } 
+    else if(proxyResponse.headers['content-type'] == 'video/x-flv'){
+        fs.readFile('video.flv', function (err, data) {
+            if(err == null){
+                response.end(data);
+            }
+            else{
+                forward(request, proxyRequest, proxyResponse, response);
+                return;    
+            }
+        });
+        response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
+    }        
+    else {
         forward(request, proxyRequest, proxyResponse, response);
     }
 }
@@ -71,7 +84,7 @@ http.createServer(function(request, response) {
             host: urlParts.host,
             port: 80,
             method: request.method,
-            path: urlParts.pathname,
+            path: urlParts.pathname + (typeof urlParts.search === 'undefined' ? '' : urlParts.search),
             headers: request.headers
         };
 
@@ -90,4 +103,3 @@ http.createServer(function(request, response) {
     });
 
 }).listen(8080);
-
