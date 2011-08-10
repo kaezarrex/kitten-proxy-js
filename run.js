@@ -11,7 +11,7 @@ var i = 0,
 ];
 
 function kittenize(request, proxyRequest, proxyResponse, response) {
-    var filename = 'tmp/img' + i++ + '.jpg',
+    var filename = 'tmp/img' + (new Date().getTime()) + i++,
         file = fs.createWriteStream(filename);
 
     proxyResponse.addListener('data', function(chunk) {
