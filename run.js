@@ -21,23 +21,26 @@ function kittenize(request, proxyRequest, proxyResponse, response) {
     proxyResponse.addListener('end', function() {
         file.end();
         exec('identify' + ' ' + filename, function(error, stdout, stderr){
-
             if(error !== null) return response.end();
-
-            var options = {
-                host: 'placekitten.com',
-                port: 80,
-                path: '/' + stdout.split(' ')[2].replace('x', '/'),
-            };
-
-            http.get(options, function(proxyResponse2){
-                proxyResponse2.addListener('data', function(chunk) {
-                    response.write(chunk, 'binary');
-                });
-                proxyResponse2.addListener('end', function() {
-                    response.end();                     
-                });
+            
+            response.writeHead(303, {
+                Location : 'http://placekitten.com' + '/' + stdout.split(' ')[2].replace('x', '/')
             });
+            response.end();
+//            var options = {
+//                host: 'placekitten.com',
+//                port: 80,
+//                path: '/' + stdout.split(' ')[2].replace('x', '/'),
+//            };
+
+//            http.get(options, function(proxyResponse2){
+//                proxyResponse2.addListener('data', function(chunk) {
+//                    response.write(chunk, 'binary');
+//                });
+//                proxyResponse2.addListener('end', function() {
+//                    response.end();                     
+//                });
+//            });
         });
     });
 }
