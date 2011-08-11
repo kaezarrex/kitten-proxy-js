@@ -22,6 +22,8 @@ function kittenize(request, proxyRequest, proxyResponse, response) {
         file.end();
         exec('identify' + ' ' + filename, function(error, stdout, stderr){
 
+            if(error !== null) return response.end();
+
             var options = {
                 host: 'placekitten.com',
                 port: 80,
