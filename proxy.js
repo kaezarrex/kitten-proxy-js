@@ -1,7 +1,6 @@
 var http = require('http'),
     fs = require('fs'),
-    url = require('url'),
-    exec = require('child_process').exec;
+    url = require('url');
 
 var i = 0,
     MIME_TYPES = [
@@ -10,39 +9,79 @@ var i = 0,
     'image/gif'
 ];
 
-function kittenize(request, proxyRequest, proxyResponse, response) {
-    var filename = 'tmp/img' + (new Date().getTime()) + i++,
-        file = fs.createWriteStream(filename);
+function Proxy() {
+    this.handlers = new Object();
+}
 
-    proxyResponse.addListener('data', function(chunk) {
-        file.write(chunk);
-    });
-    
-    proxyResponse.addListener('end', function() {
-        file.end();
-        exec('identify' + ' ' + filename, function(error, stdout, stderr){
-            if(error !== null) return response.end();
-            
-            response.writeHead(303, {
-                Location : 'http://placekitten.com' + '/' + stdout.split(' ')[2].replace('x', '/')
-            });
-            response.end();
-//            var options = {
-//                host: 'placekitten.com',
-//                port: 80,
-//                path: '/' + stdout.split(' ')[2].replace('x', '/'),
-//            };
+Proxy.prototype.addHandler = function(mimetype, handler) {
+    this.handlers[mimetype] = handler;
+}
 
-//            http.get(options, function(proxyResponse2){
-//                proxyResponse2.addListener('data', function(chunk) {
-//                    response.write(chunk, 'binary');
-//                });
-//                proxyResponse2.addListener('end', function() {
-//                    response.end();                     
-//                });
-//            });
+Proxy.prototype.listen = function(port) {
+    var that = this;
+    http.createServer(function(request, response) {
+
+        var proxyRequest,
+            urlParts = url.parse(request.url),
+            options = {
+                host: urlParts.host,
+                port: 80,
+                method: request.method,
+                path: urlParts.pathname + (typeof urlParts.search === 'undefined' ? '' : urlParts.search),
+                headers: request.headers
+            };
+
+        proxyRequest = http.request(options);
+
+        proxyRequest.addListener('response', function(proxyResponse) {
+            that.assignProxy(request, proxyRequest, proxyResponse, response);
         });
-    });
+        
+        request.addListener('data', function(chunk) {
+            proxyRequest.write(chunk, 'binary');
+        });
+
+        request.addListener('end', function() {
+            proxyRequest.end();
+        });
+
+    }).listen(port);
+}
+
+Proxy.prototype.assignProxy = function(request, proxyRequest, proxyResponse, response) {
+    /* Takes in a request, and determines if an image is being requested. If
+       this is the case, then a new request is generated. This request will
+       point to an image at placekitten.com. If the request for anything
+       else, it is simply returned.*/
+    
+    var mimetype = proxyResponse.headers['content-type'],
+        handler = this.handlers[mimetype];
+
+    if (null != handler && !handler.blacklist(request.headers.host)) {
+        handler.proxy(request, proxyRequest, proxyResponse, response);
+    } else {
+        forward(request, proxyRequest, proxyResponse, response);
+    }
+    
+//    if (request.headers.host != 'placekitten.com' && MIME_TYPES.indexOf(proxyResponse.headers['content-type']) > -1) {
+//        // This response is an image, so replace it
+//        kittenize(request, proxyRequest, proxyResponse, response);
+//    } 
+//    else if(proxyResponse.headers['content-type'] == 'video/x-flv'){
+//        fs.readFile('video.flv', function (err, data) {
+//            if(err == null){
+//                response.end(data);
+//            }
+//            else{
+//                forward(request, proxyRequest, proxyResponse, response);
+//                return;    
+//            }
+//        });
+//        response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
+//    }        
+//    else {
+//        forward(request, proxyRequest, proxyResponse, response);
+//    }
 }
 
 function forward(request, proxyRequest, proxyResponse, response) {
@@ -55,56 +94,5 @@ function forward(request, proxyRequest, proxyResponse, response) {
     response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
 }
 
-function setupProxy(request, proxyRequest, proxyResponse, response) {
-    /* Takes in a request, and determines if an image is being requested. If
-       this is the case, then a new request is generated. This request will
-       point to an image at placekitten.com. If the request for anything
-       else, it is simply returned.*/
-    if (request.headers.host != 'placekitten.com' && MIME_TYPES.indexOf(proxyResponse.headers['content-type']) > -1) {
-        // This response is an image, so replace it
-        kittenize(request, proxyRequest, proxyResponse, response);
-    } 
-    else if(proxyResponse.headers['content-type'] == 'video/x-flv'){
-        fs.readFile('video.flv', function (err, data) {
-            if(err == null){
-                response.end(data);
-            }
-            else{
-                forward(request, proxyRequest, proxyResponse, response);
-                return;    
-            }
-        });
-        response.writeHead(proxyResponse.statusCode, proxyResponse.headers);
-    }        
-    else {
-        forward(request, proxyRequest, proxyResponse, response);
-    }
-}
+exports.Proxy = Proxy
 
-http.createServer(function(request, response) {
-
-    var proxyRequest,
-        urlParts = url.parse(request.url),
-        options = {
-            host: urlParts.host,
-            port: 80,
-            method: request.method,
-            path: urlParts.pathname + (typeof urlParts.search === 'undefined' ? '' : urlParts.search),
-            headers: request.headers
-        };
-
-    proxyRequest = http.request(options);
-
-    proxyRequest.addListener('response', function(proxyResponse) {
-        setupProxy(request, proxyRequest, proxyResponse, response);
-    });
-    
-    request.addListener('data', function(chunk) {
-        proxyRequest.write(chunk, 'binary');
-    });
-
-    request.addListener('end', function() {
-        proxyRequest.end();
-    });
-
-}).listen(8080);
