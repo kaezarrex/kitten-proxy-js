@@ -3,5 +3,4 @@ Dependencies:
  imagemagick
 
 Usage:
- > mkdir tmp
- > node run.js
+ > node main.js

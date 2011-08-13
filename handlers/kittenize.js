@@ -1,18 +1,26 @@
 var fs = require('fs'),
+    path = require('path'),
     exec = require('child_process').exec,
     i = 0;
 
 exports.proxy = function(request, proxyRequest, proxyResponse, response) {
-    var filename = 'tmp/img' + (new Date().getTime()) + i++,
-        file = fs.createWriteStream(filename);
+    var pathName = 'tmp',
+        fileName = pathName + '/img' + (new Date().getTime()) + i++,
+        fileStream;
+
+    if (!path.existsSync(pathName)) {
+        fs.mkdirSync(pathName, '0755');
+    }
+    
+    fileStream = fs.createWriteStream(fileName);
 
     proxyResponse.addListener('data', function(chunk) {
-        file.write(chunk);
+        fileStream.write(chunk);
     });
     
     proxyResponse.addListener('end', function() {
-        file.end();
-        exec('identify' + ' ' + filename, function(error, stdout, stderr){
+        fileStream.end();
+        exec('identify' + ' ' + fileName, function(error, stdout, stderr){
             if (error !== null) return response.end();
             
             response.writeHead(303, {
