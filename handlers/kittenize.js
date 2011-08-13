@@ -13,7 +13,7 @@ exports.proxy = function(request, proxyRequest, proxyResponse, response) {
     proxyResponse.addListener('end', function() {
         file.end();
         exec('identify' + ' ' + filename, function(error, stdout, stderr){
-            if(error !== null) return response.end();
+            if (error !== null) return response.end();
             
             response.writeHead(303, {
                 Location : 'http://placekitten.com' + '/' + stdout.split(' ')[2].replace('x', '/')
